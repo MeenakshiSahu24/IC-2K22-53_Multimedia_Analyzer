@@ -1,16 +1,3 @@
-# Consolidated Multimedia Analyzer
-
-A Python-based multimedia metadata analyzer that automatically identifies whether a given file is an image, audio, or video and extracts its metadata.
-
-## Features
-
-- Automatically detects file type
-- Extracts image metadata
-- Extracts audio metadata
-- Extracts video metadata
-- Generates a JSON report
-- Validates files before analysis
-- Supports multiple multimedia formats
 
 ## Supported File Types
 
@@ -61,18 +48,6 @@ multimedia_analyzer/
 │
 └── reports/
     └── report.json
-
-## How It Works
-
-The user provides a multimedia file.
-
-The application:
-
-1. Validates the file.
-2. Identifies the file type using its extension.
-3. Selects the appropriate analyzer.
-4. Extracts metadata.
-5. Generates a JSON report.
 
 ## How to Run
 
