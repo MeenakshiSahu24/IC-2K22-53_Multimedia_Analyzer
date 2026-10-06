@@ -118,4 +118,32 @@ if __name__ == "__main__":
     if len(sys.argv) < 2:
         print("Usage: python image_analyzer.py <path_to_image>")
     else:
-        analyze_image(sys.argv[1])
+        result = analyze_image(sys.argv[1])
+
+        print("\n" + "=" * 50)
+        print("             IMAGE ANALYZER")
+        print("=" * 50)
+
+        if "error" in result:
+            print("Error:", result["error"])
+        else:
+            print(f"File Type   : {result['file_type']}")
+            print(f"File Name   : {result['file_name']}")
+            print(f"File Size   : {result['file_size']}")
+            print(f"Format      : {result['file_format']}")
+            print(f"Width       : {result['width']} pixels")
+            print(f"Height      : {result['height']} pixels")
+            print(f"Resolution  : {result['resolution']}")
+            print(f"Color Mode  : {result['color_mode']}")
+
+            print("\nEXIF Metadata")
+            print("-" * 50)
+            print(f"Camera      : {result['exif']['camera']}")
+            print(f"Date Taken  : {result['exif']['date_taken']}")
+            print(f"Orientation : {result['exif']['orientation']}")
+
+            print("\nAdditional Metadata:")
+            for tag, value in result["exif"]["additional"].items():
+                print(f"{tag}: {value}")
+
+        print("=" * 50)
