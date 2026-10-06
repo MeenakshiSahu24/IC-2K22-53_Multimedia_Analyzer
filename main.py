@@ -1,10 +1,44 @@
 import sys
+import os
+from importlib.util import spec_from_file_location, module_from_spec
 
 from file_utils import validate_file, identify_file_type
-from image_analyzer import analyze_image
-from audio_analyzer import analyze_audio
-from video_analyzer import analyze_video
 from report_generator import generate_report
+
+
+def load_function(folder, filename, function_name):
+
+    file_path = os.path.join(
+        os.path.dirname(__file__),
+        folder,
+        filename
+    )
+
+    spec = spec_from_file_location(function_name, file_path)
+    module = module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    return getattr(module, function_name)
+
+
+# Load analyzer functions from their folders
+analyze_image = load_function(
+    "01_Image_Analyzer",
+    "image_analyzer.py",
+    "analyze_image"
+)
+
+analyze_audio = load_function(
+    "03_Audio_Analyzer",
+    "audio_analyzer.py",
+    "analyze_audio"
+)
+
+analyze_video = load_function(
+    "02_Video_Analyzer",
+    "video_analyzer.py",
+    "analyze_video"
+)
 
 
 def main():
