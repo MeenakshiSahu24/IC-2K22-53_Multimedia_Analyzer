@@ -175,6 +175,7 @@ def analyze_audio(file_path):
 
 
 # Main program
+# Main program
 if __name__ == "__main__":
 
     if len(sys.argv) < 2:
@@ -184,4 +185,55 @@ if __name__ == "__main__":
 
     audio_file = sys.argv[1]
 
-    analyze_audio(audio_file)
+    # Store the returned analysis result
+    result = analyze_audio(audio_file)
+
+    print("\n" + "=" * 60)
+    print("                 AUDIO ANALYZER")
+    print("=" * 60)
+
+    # Check for errors
+    if "error" in result:
+
+        print("\nERROR:")
+        print(result["error"])
+
+        if "details" in result:
+            print("\nDetails:")
+            print(result["details"])
+
+    else:
+
+        print(f"\nFile Type      : {result['file_type']}")
+        print(f"File Name      : {result['file_name']}")
+        print(f"File Size      : {result['file_size']}")
+        print(f"Container      : {result['container']}")
+        print(f"Duration       : {result['duration']}")
+
+        print("\n" + "-" * 60)
+        print("AUDIO INFORMATION")
+        print("-" * 60)
+
+        print(f"Codec          : {result['audio']['codec']}")
+        print(f"Channels       : {result['audio']['channels']}")
+        print(f"Sampling Rate  : {result['audio']['sampling_rate']}")
+        print(f"Bit Rate       : {result['audio']['bit_rate']}")
+
+        print("\n" + "-" * 60)
+        print("ADDITIONAL METADATA")
+        print("-" * 60)
+
+        print(f"Codec Name     : {result['metadata']['codec_name']}")
+
+        additional = result["metadata"]["additional"]
+
+        if additional:
+            for key, value in additional.items():
+                print(f"{key:<15}: {value}")
+        else:
+            print("No additional metadata available.")
+
+    print("\n" + "=" * 60)
+    print("Audio analysis completed.")
+    print("=" * 60)
+    
