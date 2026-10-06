@@ -260,7 +260,64 @@ def main():
 
     video_path = sys.argv[1]
 
-    analyze_video(video_path)
+    result = analyze_video(video_path)
+
+    print("\n" + "=" * 60)
+    print("                 VIDEO ANALYZER")
+    print("=" * 60)
+
+    if "error" in result:
+
+        print("\nERROR:")
+        print(result["error"])
+
+        if "details" in result:
+            print("\nDetails:")
+            print(result["details"])
+
+    else:
+
+        print(f"\nFile Type      : {result['file_type']}")
+        print(f"File Name      : {result['file_name']}")
+        print(f"File Size      : {result['file_size']}")
+        print(f"Container      : {result['container']}")
+        print(f"Duration       : {result['duration']}")
+
+        print("\n" + "-" * 60)
+        print("VIDEO INFORMATION")
+        print("-" * 60)
+
+        print(f"Resolution     : {result['video']['resolution']}")
+        print(f"Frame Rate     : {result['video']['frame_rate']}")
+        print(f"Bit Rate       : {result['video']['bit_rate']}")
+        print(f"Codec          : {result['video']['codec']}")
+
+        print("\n" + "-" * 60)
+        print("AUDIO INFORMATION")
+        print("-" * 60)
+
+        print(f"Codec          : {result['audio']['codec']}")
+        print(f"Channels       : {result['audio']['channels']}")
+        print(f"Sampling Rate  : {result['audio']['sampling_rate']}")
+        print(f"Bit Rate       : {result['audio']['bit_rate']}")
+
+        print("\n" + "-" * 60)
+        print("ADDITIONAL METADATA")
+        print("-" * 60)
+
+        print(f"Format         : {result['metadata']['format']}")
+
+        additional = result["metadata"]["additional"]
+
+        if additional:
+            for key, value in additional.items():
+                print(f"{key:<15}: {value}")
+        else:
+            print("No additional metadata available.")
+
+    print("\n" + "=" * 60)
+    print("Video analysis completed.")
+    print("=" * 60)
 
 
 if __name__ == "__main__":
