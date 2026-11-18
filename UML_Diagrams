@@ -1,1 +1,399 @@
+# UML Diagrams — IC-2K22-53 Multimedia Analyzer
+**Author:** Meenakshi Sahu | Roll No: IC-2K22-53 | IIPS, DAVV  
+**Tech Stack:** Python · Pillow · FFprobe · ElevenLabs Scribe API
 
+---
+
+## Table of Contents
+1. [Class Diagram](#1-class-diagram)
+2. [Component Diagram](#2-component-diagram)
+3. [Use Case Diagram](#3-use-case-diagram)
+4. [Activity Diagram](#4-activity-diagram)
+5. [Sequence Diagram](#5-sequence-diagram)
+
+---
+
+## 1. Class Diagram
+
+### Description
+A Class Diagram shows the **static structure** of the system — the classes (blueprints),
+their attributes (data), their methods (behaviours), and the relationships between them.
+It answers the question: *"What objects exist in the system and how are they connected?"*
+
+In the Multimedia Analyzer, there are 6 core classes:
+- `Main` — entry point and controller; reads the CLI argument and orchestrates the pipeline.
+- `FileUtils` — detects the file type (IMAGE / AUDIO / VIDEO / UNKNOWN) based on extension.
+- `ImageAnalyzer` — opens the image with Pillow, extracts dimensions, format, color mode, and EXIF data.
+- `AudioAnalyzer` — runs FFprobe on an audio file and extracts codec, channels, sample rate, bit rate, and duration.
+- `VideoAnalyzer` — runs FFprobe on a video file and extracts both video-stream and audio-stream metadata.
+- `VoiceCloning (SpeechToText)` — uploads an audio file to the ElevenLabs Scribe API and returns a text transcription.
+- `ImageEnhancer` — applies Pillow enhancements (brightness, contrast, color, sharpness) and saves the result.
+- `ReportGenerator` — serialises all metadata into a JSON file saved in the `reports/` folder.
+
+**Relationships:**
+- `Main` *uses* `FileUtils` to route to the correct analyzer.
+- `Main` *delegates* analysis to `ImageAnalyzer`, `AudioAnalyzer`, or `VideoAnalyzer`.
+- `VideoAnalyzer` *internally processes* both a video stream and an embedded audio stream.
+- `Main` *uses* `ReportGenerator` to persist results.
+- `ImageEnhancer` and `VoiceCloning` are standalone processors called independently.
+
+```
++------------------+          +-------------------+
+|      Main        |--------->|    FileUtils       |
++------------------+          +-------------------+
+| -file_path: str  |          | +validate_file()   |
++------------------+          | +get_extension()   |
+| +main()          |          | +identify_type()   |
++------------------+          +-------------------+
+        |
+        |uses one of
+        v
++-------------------+   +--------------------+   +--------------------+
+|  ImageAnalyzer    |   |   AudioAnalyzer    |   |   VideoAnalyzer    |
++-------------------+   +--------------------+   +--------------------+
+| -image_path: str  |   | -file_path: str    |   | -video_path: str   |
++-------------------+   +--------------------+   +--------------------+
+| +analyze_image()  |   | +analyze_audio()   |   | +analyze_video()   |
+| +format_size()    |   | +format_size()     |   | +format_size()     |
++-------------------+   | +format_duration() |   | +format_duration() |
+                        +--------------------+   +--------------------+
+
++-------------------+   +--------------------+   +--------------------+
+|  ImageEnhancer    |   |   VoiceCloning     |   | ReportGenerator    |
+| (img_enhance.py)  |   | (voice_cloning.py) |   +--------------------+
++-------------------+   +--------------------+   | -output_file: str  |
+| -input_image: str |   | -api_key: str      |   +--------------------+
+| -output_image:str |   | -audio_file: str   |   | +generate_report() |
++-------------------+   | -output_text: str  |   +--------------------+
+| +enhance()        |   +--------------------+
+| +save()           |   | +speech_to_text()  |
++-------------------+   +--------------------+
+```
+
+---
+
+## 2. Component Diagram
+
+### Description
+A Component Diagram shows the **physical / logical building blocks** of the system and
+how they communicate through interfaces. It answers: *"What are the deployable pieces and
+what does each one depend on?"*
+
+The Multimedia Analyzer is broken into five layers:
+
+| Layer | Purpose |
+|---|---|
+| **Entry Point** | `main.py` — CLI interface, argument parsing, pipeline coordinator |
+| **Utility** | `file_utils.py` — extension-based type detection |
+| **Analyzers** | `image_analyzer.py`, `audio_analyzer.py`, `video_analyzer.py` — extract metadata |
+| **Processors** | `img_enhance.py`, `voice_cloning.py` — transform/enrich media |
+| **Output** | `report_generator.py` — persist results as JSON |
+
+External dependencies:
+- **Pillow** — image open, EXIF read, enhancement filters (`ImageAnalyzer`, `ImageEnhancer`)
+- **FFprobe (subprocess)** — audio/video metadata (`AudioAnalyzer`, `VideoAnalyzer`)
+- **ElevenLabs Scribe API** — cloud speech-to-text (`VoiceCloning`)
+- **File System** — reads input files, writes `reports/*.json` and `enhanced_image.jpg`
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│                     Multimedia Analyzer System                   │
+│                                                                  │
+│  ┌─────────────┐                                                 │
+│  │   main.py   │  ← CLI entry point                              │
+│  └──────┬──────┘                                                 │
+│         │ uses                                                   │
+│  ┌──────▼──────────┐                                             │
+│  │  file_utils.py  │  ← validates path, detects IMAGE/AUDIO/VIDEO│
+│  └──────┬──────────┘                                             │
+│         │ routes to                                              │
+│  ┌──────┴────────────────────────────────┐                       │
+│  │                                       │                       │
+│  ▼                     ▼                 ▼                       │
+│ ┌──────────────┐ ┌──────────────┐ ┌──────────────┐              │
+│ │image_analyzer│ │audio_analyzer│ │video_analyzer │              │
+│ │    .py       │ │    .py       │ │    .py        │              │
+│ └──────┬───────┘ └──────┬───────┘ └──────┬────────┘             │
+│        │                │                │                       │
+│        │ uses           │ uses           │ uses                  │
+│        ▼                ▼                ▼                       │
+│     [Pillow]        [FFprobe]        [FFprobe]                   │
+│                                                                  │
+│  ┌────────────────────┐  ┌──────────────────┐                    │
+│  │   img_enhance.py   │  │ voice_cloning.py │                    │
+│  │  (Standalone)      │  │  (Standalone)    │                    │
+│  └────────┬───────────┘  └────────┬─────────┘                   │
+│           │uses                   │calls                         │
+│        [Pillow]           [ElevenLabs API]                       │
+│                                                                  │
+│  ┌──────────────────────┐                                        │
+│  │  report_generator.py │  ← serialises metadata to JSON         │
+│  └──────────────────────┘                                        │
+│                                                                  │
+│  ┌────────────────────────────────────────────┐                  │
+│  │  File System                               │                  │
+│  │  Input: any media file                     │                  │
+│  │  Output: reports/report.json               │                  │
+│  │          enhanced_image.jpg                │                  │
+│  │          transcription.txt                 │                  │
+│  └────────────────────────────────────────────┘                  │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 3. Use Case Diagram
+
+### Description
+A Use Case Diagram shows the **functional requirements** of the system from the perspective
+of external actors. It answers: *"Who uses the system and what can they do with it?"*
+
+**Actors:**
+- **User** — provides a media file path via CLI and receives analysis results.
+- **ElevenLabs API** — external service involved in the speech-to-text use case.
+- **FFprobe** — system-level tool invoked for audio/video analysis.
+
+**Use Cases:**
+
+| Use Case | Description |
+|---|---|
+| UC1: Provide File Path | User passes a media file path as a CLI argument |
+| UC2: Validate File | System checks the file exists and is a real file |
+| UC3: Detect File Type | System identifies IMAGE, AUDIO, VIDEO, or UNKNOWN |
+| UC4: Analyze Image | Extract dimensions, format, color mode, DPI, EXIF data |
+| UC5: Analyze Audio | Extract codec, channels, sampling rate, bit rate, duration |
+| UC6: Analyze Video | Extract resolution, FPS, bit rate, codec + embedded audio info |
+| UC7: Enhance Image | Apply brightness/contrast/color/sharpness enhancements |
+| UC8: Transcribe Speech | Upload audio to ElevenLabs and receive text transcription |
+| UC9: Generate Report | Compile metadata and save as reports/report.json |
+
+**Relationships:**
+- UC4, UC5, UC6 each `<<include>>` UC9 (every analysis generates a report)
+- UC7 `<<extends>>` UC4 (image enhancement is an optional add-on to image analysis)
+- UC8 `<<extends>>` UC5 (transcription is an optional add-on to audio analysis)
+- UC6 `<<include>>` UC5 (video analysis always extracts the embedded audio track too)
+
+```
+           ┌─────────────────────────────────────────────────────┐
+           │             Multimedia Analyzer System               │
+           │                                                      │
+  [User] ──┤──► UC1: Provide File Path                           │
+           │         │                                            │
+           │         ▼                                            │
+           │    UC2: Validate File                                │
+           │         │                                            │
+           │         ▼                                            │
+           │    UC3: Detect File Type                             │
+           │         │                                            │
+           │    ┌────┴──────────────┐                             │
+           │    ▼                  ▼                   ▼          │
+           │  UC4: Analyze     UC5: Analyze       UC6: Analyze    │
+           │  Image            Audio              Video           │
+           │    │                │                   │            │
+           │    │  <<extends>>   │  <<extends>>       │<<include>> │
+           │    ▼                ▼                   ▼            │
+           │  UC7: Enhance   UC8: Transcribe     UC5: Analyze    │
+           │  Image          Speech (via         Audio           │
+           │                 ElevenLabs)         (embedded)      │
+           │    │                │                   │            │
+           │    └────────────────┴───────────────────┘            │
+           │                     │  <<include>>                   │
+           │                     ▼                                │
+           │             UC9: Generate Report                     │
+           └─────────────────────────────────────────────────────┘
+                                               [FFprobe] [ElevenLabs API]
+```
+
+---
+
+## 4. Activity Diagram
+
+### Description
+An Activity Diagram shows the **flow of control** through the system — step by step,
+including decisions (branches) and parallel/sequential actions. It answers:
+*"What happens, in what order, and what decisions are made?"*
+
+The Multimedia Analyzer follows this flow:
+
+1. User runs `python main.py <file_path>`.
+2. `main()` checks argument count — if wrong, prints usage and exits.
+3. `validate_file()` checks the file exists — if not, prints error and exits.
+4. `identify_file_type()` returns IMAGE, AUDIO, VIDEO, or UNKNOWN.
+5. Based on type, the matching `analyze_*()` function is called.
+6. The analyzer returns a metadata dictionary.
+7. If the metadata contains an `"error"` key, the error is printed and the program exits.
+8. Otherwise `generate_report()` saves the metadata as JSON in `reports/report.json`.
+
+The Image Enhancer and Voice Cloning modules run as **standalone scripts** separate
+from the main pipeline (they are not invoked by `main.py`).
+
+```
+                    [START]
+                       │
+                       ▼
+           ┌─── Check sys.argv ───┐
+           │                      │
+       len != 2               len == 2
+           │                      │
+           ▼                      ▼
+     Print Usage         file_path = sys.argv[1]
+     [EXIT]                       │
+                                  ▼
+                        validate_file(file_path)
+                           │           │
+                        False         True
+                           │           │
+                           ▼           ▼
+                       Print Error  identify_file_type()
+                       [EXIT]            │
+                              ┌──────────┼─────────┐
+                            IMAGE      AUDIO     VIDEO
+                              │          │          │
+                              ▼          ▼          ▼
+                        analyze_image  analyze_audio  analyze_video
+                              │          │          │
+                              └──────────┴──────────┘
+                                         │
+                              ┌──────────┴──────────┐
+                           "error"               no error
+                           in result               │
+                              │                    ▼
+                              ▼             generate_report(metadata)
+                         Print Error              │
+                         [EXIT]                   ▼
+                                        reports/report.json saved
+                                                  │
+                                               [END]
+
+─── Standalone Flows (independent scripts) ───────────────────────
+
+[img_enhance.py]                   [voice_cloning.py]
+      │                                   │
+      ▼                                   ▼
+ Open sample_image.png           Input ElevenLabs API key
+      │                                   │
+      ▼                                   ▼
+ Convert to RGB               Upload sample_audio.mp3 to
+      │                        ElevenLabs Scribe API
+      ▼                                   │
+ Enhance Brightness (×1.2)                ▼
+      │                       Receive transcription text
+      ▼                                   │
+ Enhance Contrast (×1.3)                  ▼
+      │                       Save to transcription.txt
+      ▼                                [END]
+ Enhance Color (×1.2)
+      │
+      ▼
+ Enhance Sharpness (×1.5)
+      │
+      ▼
+ Apply SHARPEN filter
+      │
+      ▼
+ Save enhanced_image.jpg
+      │
+   [END]
+```
+
+---
+
+## 5. Sequence Diagram
+
+### Description
+A Sequence Diagram shows the **time-ordered interactions between objects**. It illustrates
+which object calls which method, in what order, and what is returned. It answers:
+*"How do objects collaborate to fulfil one specific scenario?"*
+
+Three scenarios are covered below:
+
+---
+
+### Scenario A — Image Analysis
+
+**Flow:** User → main() → FileUtils → ImageAnalyzer → ReportGenerator
+
+```
+User       main.py      file_utils.py   image_analyzer.py   report_generator.py
+ │            │               │                │                    │
+ │─run cmd───►│               │                │                    │
+ │            │─validate()───►│                │                    │
+ │            │◄──True────────│                │                    │
+ │            │─identify()───►│                │                    │
+ │            │◄──"IMAGE"─────│                │                    │
+ │            │─────────────────analyze_image()►│                    │
+ │            │                │   open image  │                    │
+ │            │                │   read EXIF   │                    │
+ │            │◄────────────────── metadata{}  │                    │
+ │            │───────────────────────────────────generate_report()►│
+ │            │                │                │   write JSON      │
+ │            │◄───────────────────────────────────────────────────│
+ │◄─ Report saved ─────────────────────────────│                    │
+```
+
+---
+
+### Scenario B — Audio Analysis + Transcription
+
+**Flow:** User → main() → FileUtils → AudioAnalyzer → ReportGenerator
+         Separately: User → voice_cloning.py → ElevenLabs API
+
+```
+User       main.py      file_utils.py   audio_analyzer.py   report_generator.py
+ │            │               │                │                    │
+ │─run cmd───►│               │                │                    │
+ │            │─validate()───►│                │                    │
+ │            │◄──True────────│                │                    │
+ │            │─identify()───►│                │                    │
+ │            │◄──"AUDIO"─────│                │                    │
+ │            │───────────────────analyze_audio()►                  │
+ │            │               │    ffprobe CLI │                    │
+ │            │               │    parse JSON  │                    │
+ │            │◄──────────────────── metadata{}│                    │
+ │            │────────────────────────────────────generate_report()►
+ │            │               │                │   write JSON       │
+ │◄─ Report saved ────────────│                │                    │
+
+── Standalone transcription ──────────────────────────────────────────
+User  voice_cloning.py    ElevenLabs API
+ │          │                   │
+ │─run────►│                   │
+ │          │─input API key─────│
+ │          │─POST /speech-to-text (audio file)──►│
+ │          │◄─── transcription text ─────────────│
+ │          │─save transcription.txt              │
+ │◄─Done───│                   │
+```
+
+---
+
+### Scenario C — Video Analysis
+
+**Flow:** User → main() → FileUtils → VideoAnalyzer → ReportGenerator
+
+```
+User       main.py      file_utils.py   video_analyzer.py   report_generator.py
+ │            │               │                │                    │
+ │─run cmd───►│               │                │                    │
+ │            │─validate()───►│                │                    │
+ │            │◄──True────────│                │                    │
+ │            │─identify()───►│                │                    │
+ │            │◄──"VIDEO"─────│                │                    │
+ │            │───────────────────analyze_video()►                  │
+ │            │               │    ffprobe CLI │                    │
+ │            │               │    parse streams                    │
+ │            │               │    video stream│                    │
+ │            │               │    audio stream│                    │
+ │            │◄──────────────────── metadata{}│                    │
+ │            │      {file_type, file_name,     │                    │
+ │            │       file_size, container,     │                    │
+ │            │       duration, video{},        │                    │
+ │            │       audio{}, metadata{}}      │                    │
+ │            │────────────────────────────────────generate_report()►
+ │            │               │                │   write JSON       │
+ │◄─ Report saved ────────────│                │                    │
+```
+
+---
+
+*End of UML Diagrams — IC-2K22-53 Multimedia Analyzer*
